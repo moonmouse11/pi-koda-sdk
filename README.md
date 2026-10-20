@@ -10,9 +10,27 @@ Pi extension for **Koda hosted / OpenAI-compatible chat APIs** — one agent (Pi
 
 ## Install
 
+**npm** (recommended after publish):
+
 ```bash
-pi install ./pi-koda-sdk
+pi install npm:pi-koda-sdk@0.3.0
 ```
+
+**git** (pinned tag):
+
+```bash
+pi install git:github.com/moonmouse11/pi-koda-sdk@v0.3.0
+```
+
+**local path** (development):
+
+```bash
+git clone https://github.com/moonmouse11/pi-koda-sdk.git
+pi install ./pi-koda-sdk
+# or one-shot: pi -e ./pi-koda-sdk
+```
+
+No Koda CLI required if you set `KODA_BASE_URL` and `KODA_API_KEY`. Koda `config.yaml` / `auth.yaml` are optional import.
 
 ## Use
 

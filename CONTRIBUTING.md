@@ -42,6 +42,14 @@ Recommended for `main`:
 
 Repository description on GitHub should match the SDK scope (OpenAI-compatible Pi providers, no Koda ACP agent loop).
 
+## Release (maintainers)
+
+1. Bump `version` in `package.json` and `PACKAGE_VERSION` in `src/constants.ts`; update `CHANGELOG.md` and README install pins.
+2. `npm run check`
+3. Merge to `main`, tag: `git tag v0.3.0 && git push origin v0.3.0`
+4. Publish: `npm publish` (npm login required; package name must be available on npm)
+5. Users install with `pi install npm:pi-koda-sdk@<version>`
+
 ## Local-only docs
 
 The `docs/` directory is gitignored intentionally; planning notes stay on your machine and are not part of the published repository.
