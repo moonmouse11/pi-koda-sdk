@@ -1,4 +1,5 @@
 import { loadSdkConfig } from "../config.js";
+import { lookupModelOverride, readModelOverrideIndex, type KodaModelOverride } from "../koda-model-meta.js";
 import { readKodaOpenAiEndpoints } from "../koda-yaml.js";
 import type { DiscoveredModel } from "./discover.js";
 
@@ -11,70 +12,123 @@ export interface SdkEndpoint {
 }
 
 export function collectSdkEndpoints(): SdkEndpoint[] {
-	const out: SdkEndpoint[] = [];
-	const envBase = process.env.KODA_BASE_URL?.trim();
-	const envKey = process.env.KODA_API_KEY?.trim();
-	if (envBase) {
-		out.push({
-			providerId: "koda",
-			baseUrl: envBase.replace(/\/$/, ""),
-			apiKey: envKey,
-			modelIds: [],
-			source: "env",
-		});
-	}
-
-	const piConfig = loadSdkConfig();
-	if (piConfig.baseUrl) {
-		out.push({
-			providerId: "koda",
-			baseUrl: piConfig.baseUrl.replace(/\/$/, ""),
-			apiKey: envKey,
-			modelIds: [],
-			source: "pi-config",
-		});
-	}
-
-	for (const row of readKodaOpenAiEndpoints()) {
-		out.push({
-			providerId: row.providerId === "koda" ? "koda" : row.providerId,
-			baseUrl: row.baseUrl,
-			apiKey: row.apiKey ?? envKey,
-			modelIds: row.modelIds,
-			source: "koda-yaml",
-		});
-	}
-
-	return dedupeEndpoints(out);
-}
-
-function dedupeEndpoints(endpoints: SdkEndpoint[]): SdkEndpoint[] {
-	const seen = new Set<string>();
-	return endpoints.filter((item) => {
-		const key = `${item.providerId}\0${item.baseUrl}`;
-		if (seen.has(key)) return false;
-		seen.add(key);
-		return true;
-	});
+	return collectSdkEndpointSources().endpoints;
 }
 
 export function endpointPiProviderId(endpoint: SdkEndpoint): string {
 	return endpoint.providerId === "koda" ? "koda" : `koda-${endpoint.providerId}`;
 }
 
-export function modelsForEndpoint(endpoint: SdkEndpoint, discovered: DiscoveredModel[] = []) {
+export function modelsForEndpoint(
+	endpoint: SdkEndpoint,
+	discovered: DiscoveredModel[] = [],
+	overrides: Map<string, KodaModelOverride> = readModelOverrideIndex(),
+) {
 	const ZERO_COST = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
-	const ids = discovered.length ? discovered : endpoint.modelIds.map((id) => ({ id, name: id }));
-	const list = ids.length ? ids : [{ id: "default", name: "Default" }];
-	return list.map((item) => ({
-		id: item.id,
-		name: item.name,
-		reasoning: false,
-		input: ["text" as const],
-		cost: ZERO_COST,
-		contextWindow: 128_000,
-		maxTokens: 16_000,
-	}));
+	const ids: DiscoveredModel[] = discovered.length
+		? discovered
+		: endpoint.modelIds.map((id) => ({ id, name: id }));
+	const list: DiscoveredModel[] = ids.length ? ids : [{ id: "default", name: "Default" }];
+	return list.map((item) => {
+		const o = lookupModelOverride(overrides, endpoint.providerId, item.id);
+		const reasoning = o?.reasoning ?? item.reasoning ?? false;
+		const vision = o?.vision ?? item.vision ?? false;
+		const input = vision ? (["text", "image"] as const) : (["text"] as const);
+		return {
+			id: item.id,
+			name: o?.name ?? item.name,
+			reasoning,
+			input: [...input],
+			cost: ZERO_COST,
+			contextWindow: o?.contextWindow ?? item.contextWindow ?? 128_000,
+			maxTokens: o?.maxTokens ?? item.maxTokens ?? 16_000,
+		};
+	});
+}
+
+export interface SdkEndpointCandidate extends SdkEndpoint {
+	_index: number;
+}
+
+export function collectSdkEndpointSources(): { endpoints: SdkEndpoint[]; lines: string[] } {
+	const raw: SdkEndpointCandidate[] = [];
+	const lines: string[] = [];
+	let index = 0;
+
+	const envBase = process.env.KODA_BASE_URL?.trim();
+	const envKey = process.env.KODA_API_KEY?.trim();
+	if (envBase) {
+		raw.push({
+			providerId: "koda",
+			baseUrl: envBase.replace(/\/$/, ""),
+			apiKey: envKey,
+			modelIds: [],
+			source: "env",
+			_index: index++,
+		});
+		lines.push(`[env] KODA_BASE_URL → koda @ ${envBase.replace(/\/$/, "")}`);
+	}
+
+	const piConfig = loadSdkConfig();
+	if (piConfig.baseUrl) {
+		raw.push({
+			providerId: "koda",
+			baseUrl: piConfig.baseUrl.replace(/\/$/, ""),
+			apiKey: envKey,
+			modelIds: [],
+			source: "pi-config",
+			_index: index++,
+		});
+		lines.push(`[pi-config] koda-sdk.json → koda @ ${piConfig.baseUrl.replace(/\/$/, "")}`);
+	}
+
+	for (const row of readKodaOpenAiEndpoints()) {
+		const providerId = row.providerId === "koda" ? "koda" : row.providerId;
+		raw.push({
+			providerId,
+			baseUrl: row.baseUrl,
+			apiKey: row.apiKey ?? envKey,
+			modelIds: row.modelIds,
+			source: "koda-yaml",
+			_index: index++,
+		});
+		lines.push(
+			`[koda-yaml] ${endpointPiProviderId({ providerId, baseUrl: row.baseUrl, modelIds: row.modelIds, source: "koda-yaml" })} @ ${row.baseUrl}`,
+		);
+	}
+
+	const { endpoints, dropped } = dedupeWithTrace(raw);
+	lines.push(...dropped);
+
+	return { endpoints, lines };
+}
+
+function dedupeWithTrace(raw: SdkEndpointCandidate[]): { endpoints: SdkEndpoint[]; dropped: string[] } {
+	const seen = new Set<string>();
+	const endpoints: SdkEndpoint[] = [];
+	const dropped: string[] = [];
+	for (const item of raw) {
+		const key = `${item.providerId}\0${item.baseUrl}`;
+		if (seen.has(key)) {
+			dropped.push(
+				`[dedupe] dropped duplicate: ${endpointPiProviderId(item)} @ ${item.baseUrl} (${item.source}, #${item._index})`,
+			);
+			continue;
+		}
+		seen.add(key);
+		endpoints.push(stripCandidateIndex(item));
+	}
+	return { endpoints, dropped };
+}
+
+function stripCandidateIndex(item: SdkEndpointCandidate): SdkEndpoint {
+	return {
+		providerId: item.providerId,
+		baseUrl: item.baseUrl,
+		apiKey: item.apiKey,
+		modelIds: item.modelIds,
+		source: item.source,
+	};
 }
 
 export function resolveEndpointApiKey(endpoint: SdkEndpoint): string | undefined {

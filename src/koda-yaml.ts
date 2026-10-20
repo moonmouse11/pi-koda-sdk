@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { parse as parseYaml } from "yaml";
 
+import { readKodaConfigDocument } from "./koda-config-doc.js";
 import { findKodaAuthPath, findKodaConfigPath } from "./koda-paths.js";
 
 export interface KodaOpenAiEndpoint {
@@ -11,16 +12,8 @@ export interface KodaOpenAiEndpoint {
 }
 
 export function readKodaOpenAiEndpoints(): KodaOpenAiEndpoint[] {
-	const configPath = findKodaConfigPath();
-	if (!configPath) return [];
-	let doc: unknown;
-	try {
-		doc = parseYaml(fs.readFileSync(configPath, "utf8"));
-	} catch {
-		return [];
-	}
-	if (!doc || typeof doc !== "object") return [];
-	const record = doc as Record<string, unknown>;
+	const record = readKodaConfigDocument();
+	if (!record) return [];
 	const providers = Array.isArray(record.providers) ? record.providers : [];
 	const auth = readAuthMap();
 	const endpoints: KodaOpenAiEndpoint[] = [];
