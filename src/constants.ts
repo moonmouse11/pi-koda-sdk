@@ -1,4 +1,4 @@
-import packageJson from "../package.json" with { type: "json" };
+export const PACKAGE_VERSION = "0.2.0";
 
-export const PACKAGE_VERSION = packageJson.version;
-export const PROVIDER_ID = "koda";
+/** Max time to wait for startup model discovery before giving up. */
+export const STARTUP_DISCOVERY_TIMEOUT_MS = 8_000;

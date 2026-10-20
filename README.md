@@ -23,7 +23,7 @@ pi --model koda/default
 pi --list-models koda
 ```
 
-In Pi: `/koda doctor`, `/koda models refresh`
+In Pi: `/koda doctor`, `/koda doctor-verbose`, `/koda reload`, `/koda models refresh`
 
 ## Development
 
@@ -32,7 +32,22 @@ npm install && npm run check
 pi -e . --model koda/default
 ```
 
+## From Koda CLI — take vs skip
+
+Koda CLI (`@koda-code/cli`) is a full product: TUI, tasks, local services, IDE hooks. **pi-koda-sdk only reuses data Koda already stores on disk**, not its UX or agent runtime.
+
+| Take (already or next) | Skip |
+|--------|------|
+| `config.yaml` / `auth.yaml` paths and OpenAI-compatible `providers[].base_url` | Koda TUI, themes, splash, “beauty” |
+| Model IDs / aliases needed to register Pi providers | Koda session server, task UI, checkpoints inside Koda |
+| Optional: `GET /v1/models` discovery per endpoint | `koda --acp`, subprocess agent loop |
+| `/koda doctor`, env + `koda-sdk.json` overrides | JetBrains / VS Code Koda plugins |
+| Same API keys Koda uses (read from auth yaml) | Koda-specific tools, hooks, memory, subagents |
+
+Pi stays the only agent; Koda is a **provider config + HTTP chat API** source.
+
 ## Non-goals
 
 - Koda ACP / `koda --acp` (removed — duplicates Pi’s agent loop)
 - Koda IDE plugins (use those inside JetBrains/VS Code separately)
+- Parity with Koda CLI features beyond OpenAI-compatible chat endpoints

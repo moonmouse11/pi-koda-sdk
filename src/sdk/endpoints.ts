@@ -76,3 +76,9 @@ export function modelsForEndpoint(endpoint: SdkEndpoint, discovered: DiscoveredM
 		maxTokens: 16_000,
 	}));
 }
+
+export function resolveEndpointApiKey(endpoint: SdkEndpoint): string | undefined {
+	if (endpoint.apiKey?.trim()) return endpoint.apiKey.trim();
+	const env = process.env.KODA_API_KEY?.trim();
+	return env || undefined;
+}
