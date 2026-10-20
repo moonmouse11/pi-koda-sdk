@@ -1,9 +1,17 @@
 {
   "name": "pi-koda-sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Koda OpenAI-compatible models as Pi providers (SDK path, no ACP)",
   "type": "module",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/moonmouse11/pi-koda-sdk.git"
+  },
+  "bugs": {
+    "url": "https://github.com/moonmouse11/pi-koda-sdk/issues"
+  },
+  "homepage": "https://github.com/moonmouse11/pi-koda-sdk#readme",
   "keywords": [
     "pi-package",
     "pi-extension",
@@ -16,6 +24,7 @@
     "extensions",
     "src",
     "README.md",
+    "CHANGELOG.md",
     "LICENSE"
   ],
   "pi": {
@@ -29,7 +38,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/",
-    "check": "npm run typecheck && npm run test"
+    "check": "npm run typecheck && npm run test",
+    "prepublishOnly": "npm run check"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
