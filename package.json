@@ -28,7 +28,8 @@
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "check": "npm run typecheck"
+    "test": "node --import tsx --test test/",
+    "check": "npm run typecheck && npm run test"
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": "*",
@@ -41,6 +42,7 @@
     "@earendil-works/pi-ai": "0.99.2",
     "@earendil-works/pi-coding-agent": "0.99.2",
     "@types/node": "24.10.1",
+    "tsx": "4.20.6",
     "typescript": "5.9.3"
   }
 }
