@@ -28,7 +28,7 @@ In Pi: `/koda doctor`, `/koda doctor-verbose`, `/koda sources`, `/koda reload`, 
 ## Development
 
 ```bash
-npm install && npm run check
+npm install && npm run check   # typecheck + unit tests
 pi -e . --model koda/default
 ```
 

@@ -20,7 +20,7 @@ Keep branches focused; one logical change per PR when possible.
 3. Install and verify locally:
    ```bash
    npm install
-   npm run check
+   npm run check   # tsc + npm test
    ```
 4. Commit with a clear message (what/why).
 5. Push and open a **pull request** into `main` on GitHub.
