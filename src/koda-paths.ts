@@ -35,3 +35,19 @@ export function findKodaAuthPath(): string | undefined {
 	}
 	return undefined;
 }
+
+export function kodaDataDir(): string {
+	const xdg = process.env.XDG_DATA_HOME?.trim();
+	if (xdg) return path.join(xdg, "kodacode");
+	return path.join(os.homedir(), ".local", "share", "kodacode");
+}
+
+export function findKodaModelsCachePath(): string | undefined {
+	const candidate = path.join(kodaDataDir(), "models-cache.json");
+	try {
+		if (fs.statSync(candidate).isFile()) return candidate;
+	} catch {
+		/* missing */
+	}
+	return undefined;
+}

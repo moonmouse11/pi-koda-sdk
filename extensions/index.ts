@@ -2,8 +2,10 @@ import type { ExtensionAPI, ExtensionCommandContext } from "@earendil-works/pi-c
 
 import { loadSdkConfig, saveSdkConfig } from "../src/config.js";
 import { PACKAGE_VERSION } from "../src/constants.js";
-import { formatPrimaryModelHint } from "../src/koda-routing.js";
-import { findKodaAuthPath, findKodaConfigPath } from "../src/koda-paths.js";
+import { formatRoutingHints } from "../src/koda-routing.js";
+import { findKodaAuthPath, findKodaConfigPath, findKodaModelsCachePath } from "../src/koda-paths.js";
+import { readModelOverrideIndex } from "../src/koda-model-meta.js";
+import { collectSdkEndpointSources } from "../src/sdk/endpoints.js";
 import { buildDoctorReport } from "../src/sdk/doctor.js";
 import { registerKodaSdkProviders } from "../src/sdk/register.js";
 
@@ -31,10 +33,22 @@ export default function kodaSdkExtension(pi: ExtensionAPI): void {
 					`KODA_BASE_URL: ${process.env.KODA_BASE_URL ?? "(unset)"}`,
 					`koda config.yaml: ${findKodaConfigPath() ?? "not found"}`,
 					`koda auth.yaml: ${findKodaAuthPath() ?? "not found"}`,
+					`models-cache.json: ${findKodaModelsCachePath() ?? "not found"}`,
+					`model_overrides: ${readModelOverrideIndex().size}`,
 				];
-				const hint = formatPrimaryModelHint();
-				if (hint) lines.push(hint);
+				lines.push(...formatRoutingHints());
 				ctx.ui.notify(lines.join("\n"), registry.endpoints.length ? "info" : "warning");
+				return;
+			}
+
+			if (sub === "sources") {
+				const { lines: sourceLines } = collectSdkEndpointSources();
+				ctx.ui.notify(
+					["Koda SDK endpoint sources (merge order):", ...sourceLines, "", `Active endpoints: ${registry.endpoints.length}`].join(
+						"\n",
+					),
+					"info",
+				);
 				return;
 			}
 
@@ -72,6 +86,7 @@ export default function kodaSdkExtension(pi: ExtensionAPI): void {
 					"Usage:",
 					"  /koda doctor",
 					"  /koda doctor-verbose",
+					"  /koda sources",
 					"  /koda reload",
 					"  /koda models refresh",
 					"  /koda base-url https://api.example.com/v1",

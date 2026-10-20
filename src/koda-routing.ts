@@ -1,24 +1,28 @@
-import fs from "node:fs";
-import { parse as parseYaml } from "yaml";
-
-import { findKodaConfigPath } from "./koda-paths.js";
+import { readKodaConfigDocument } from "./koda-config-doc.js";
 import { endpointPiProviderId } from "./sdk/endpoints.js";
+
+function readRoute(path: string[]): string | undefined {
+	const doc = readKodaConfigDocument();
+	if (!doc) return undefined;
+	let node: unknown = doc;
+	for (const key of path) {
+		if (!node || typeof node !== "object") return undefined;
+		node = (node as Record<string, unknown>)[key];
+	}
+	return typeof node === "string" && node.trim() ? node.trim() : undefined;
+}
 
 /** Koda `provider/model` route from config.yaml `model.primary`. */
 export function readKodaPrimaryModelRoute(): string | undefined {
-	const configPath = findKodaConfigPath();
-	if (!configPath) return undefined;
-	let doc: unknown;
-	try {
-		doc = parseYaml(fs.readFileSync(configPath, "utf8"));
-	} catch {
-		return undefined;
-	}
-	if (!doc || typeof doc !== "object") return undefined;
-	const model = (doc as Record<string, unknown>).model;
-	if (!model || typeof model !== "object") return undefined;
-	const primary = (model as Record<string, unknown>).primary;
-	return typeof primary === "string" && primary.trim() ? primary.trim() : undefined;
+	return readRoute(["model", "primary"]);
+}
+
+export function readKodaUtilityModelRoute(): string | undefined {
+	return readRoute(["utility_model"]);
+}
+
+export function readKodaReviewModelRoute(): string | undefined {
+	return readRoute(["workflow", "review_model", "primary"]);
 }
 
 /** Pi model ref: `koda/<id>` or `koda-<provider>/<id>`. */
@@ -34,9 +38,24 @@ export function kodaRouteToPiModelRef(route: string): string {
 	return `${piProvider}/${modelId}`;
 }
 
+export function formatRoutingHints(): string[] {
+	const lines: string[] = [];
+	const primary = readKodaPrimaryModelRoute();
+	if (primary) {
+		lines.push(`Suggested default (model.primary): pi --model ${kodaRouteToPiModelRef(primary)}`);
+	}
+	const utility = readKodaUtilityModelRoute();
+	if (utility) {
+		lines.push(`Utility route (utility_model): pi --model ${kodaRouteToPiModelRef(utility)}`);
+	}
+	const review = readKodaReviewModelRoute();
+	if (review) {
+		lines.push(`Review route (workflow.review_model.primary): pi --model ${kodaRouteToPiModelRef(review)}`);
+	}
+	return lines;
+}
+
+/** @deprecated use formatRoutingHints */
 export function formatPrimaryModelHint(): string | undefined {
-	const route = readKodaPrimaryModelRoute();
-	if (!route) return undefined;
-	const piRef = kodaRouteToPiModelRef(route);
-	return `Suggested default (from model.primary): pi --model ${piRef}`;
+	return formatRoutingHints()[0];
 }

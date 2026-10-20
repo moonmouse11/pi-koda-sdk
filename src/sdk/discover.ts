@@ -1,6 +1,10 @@
 export interface DiscoveredModel {
 	id: string;
 	name: string;
+	contextWindow?: number;
+	maxTokens?: number;
+	reasoning?: boolean;
+	vision?: boolean;
 }
 
 export interface ModelsProbeResult {

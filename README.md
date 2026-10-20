@@ -23,7 +23,7 @@ pi --model koda/default
 pi --list-models koda
 ```
 
-In Pi: `/koda doctor`, `/koda doctor-verbose`, `/koda reload`, `/koda models refresh`
+In Pi: `/koda doctor`, `/koda doctor-verbose`, `/koda sources`, `/koda reload`, `/koda models refresh`
 
 ## Development
 

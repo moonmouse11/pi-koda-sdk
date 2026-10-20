@@ -1,12 +1,12 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { STARTUP_DISCOVERY_TIMEOUT_MS } from "../constants.js";
-import { discoverOpenAiModels } from "./discover.js";
+import { resetModelsCacheMemo } from "../koda-models-cache.js";
+import { resolveEndpointModels } from "./catalog-resolve.js";
 import {
 	collectSdkEndpoints,
 	endpointPiProviderId,
 	modelsForEndpoint,
-	resolveEndpointApiKey,
 	type SdkEndpoint,
 } from "./endpoints.js";
 
@@ -52,6 +52,7 @@ export function registerKodaSdkProviders(pi: ExtensionAPI): KodaSdkRegistry {
 	}
 
 	function reloadEndpointsFromDisk(): void {
+		resetModelsCacheMemo();
 		unregisterAll();
 		endpoints = collectSdkEndpoints();
 		registerStaticCatalog();
@@ -62,15 +63,16 @@ export function registerKodaSdkProviders(pi: ExtensionAPI): KodaSdkRegistry {
 	async function refreshDiscovery(signal?: AbortSignal): Promise<number> {
 		let total = 0;
 		for (const endpoint of endpoints) {
-			const key = resolveEndpointApiKey(endpoint);
-			if (!key) continue;
 			try {
-				const models = await discoverOpenAiModels(endpoint.baseUrl, key, signal);
-				const configs = modelsForEndpoint(endpoint, models);
+				const configs = await resolveEndpointModels(endpoint, signal);
+				if (!configs.length || (configs.length === 1 && configs[0]?.id === "default" && !endpoint.modelIds.length)) {
+					continue;
+				}
 				discovered.set(cacheKey(endpoint), configs);
 				const providerId = endpointPiProviderId(endpoint);
 				try {
 					pi.unregisterProvider(providerId);
+					registeredProviderIds.delete(providerId);
 				} catch {
 					/* first registration */
 				}
