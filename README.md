@@ -32,6 +32,8 @@ npm install && npm run check
 pi -e . --model koda/default
 ```
 
+Contributing (branches, PRs, CI): see [CONTRIBUTING.md](./CONTRIBUTING.md).
+
 ## From Koda CLI — take vs skip
 
 Koda CLI (`@koda-code/cli`) is a full product: TUI, tasks, local services, IDE hooks. **pi-koda-sdk only reuses data Koda already stores on disk**, not its UX or agent runtime.
