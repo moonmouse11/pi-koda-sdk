@@ -4,3 +4,4 @@ node_modules/
 .idea/
 docs/
 local-full-package-test.md
+lcov.info

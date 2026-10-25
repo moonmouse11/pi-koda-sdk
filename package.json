@@ -38,6 +38,7 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test test/",
+    "test:coverage": "node --import tsx --enable-source-maps --test --experimental-test-coverage --test-reporter=spec --test-reporter-destination=stdout --test-reporter=lcov --test-reporter-destination=lcov.info test/",
     "check": "npm run typecheck && npm run test",
     "prepublishOnly": "npm run check"
   },
