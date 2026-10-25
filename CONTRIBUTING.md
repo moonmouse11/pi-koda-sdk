@@ -44,9 +44,9 @@ Repository description on GitHub should match the SDK scope (OpenAI-compatible P
 
 ## Release (maintainers)
 
-1. Bump `version` in `package.json` and `PACKAGE_VERSION` in `src/constants.ts`; update `CHANGELOG.md` and README install pins.
+1. Bump `version` in `package.json` and `PACKAGE_VERSION` in `src/constants.ts` (a test fails if they differ); update `CHANGELOG.md` and README install pins.
 2. `npm run check`
-3. Merge to `main`, tag: `git tag v0.3.0 && git push origin v0.3.0`
+3. Merge to `main`, tag: `git tag v<version> && git push origin v<version>`
 4. Publish: `npm publish` (npm login required; package name must be available on npm)
 5. Users install with `pi install npm:pi-koda-sdk@<version>`
 
