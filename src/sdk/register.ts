@@ -2,6 +2,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 import { STARTUP_DISCOVERY_TIMEOUT_MS } from "../constants.js";
 import { resetModelsCacheMemo } from "../koda-models-cache.js";
+import { isKodaProviderId } from "../koda-yaml.js";
 import { resolveEndpointModels } from "./catalog-resolve.js";
 import {
 	collectSdkEndpoints,
@@ -35,7 +36,8 @@ export function registerKodaSdkProviders(pi: ExtensionAPI): KodaSdkRegistry {
 
 	function registerOne(endpoint: SdkEndpoint, models: ReturnType<typeof modelsForEndpoint>): void {
 		const providerId = endpointPiProviderId(endpoint);
-		const apiKey = endpoint.apiKey ? endpoint.apiKey : "$KODA_API_KEY";
+		const apiKey = endpoint.apiKey || (isKodaProviderId(endpoint.providerId) ? "$KODA_API_KEY" : undefined);
+		if (!apiKey) return; // a non-Koda provider without its own key: nothing safe to send
 		pi.registerProvider(providerId, {
 			baseUrl: `${endpoint.baseUrl}/`,
 			api: "openai-completions",
@@ -65,12 +67,11 @@ export function registerKodaSdkProviders(pi: ExtensionAPI): KodaSdkRegistry {
 		const resolved = await Promise.all(
 			current.map((endpoint) => resolveEndpointModels(endpoint, signal).catch(() => [])),
 		);
+		if (current !== endpoints) return 0; // a reload replaced the endpoints meanwhile
 		let total = 0;
 		current.forEach((endpoint, index) => {
 			const configs = resolved[index] ?? [];
-			if (!configs.length || (configs.length === 1 && configs[0]?.id === "default" && !endpoint.modelIds.length)) {
-				return; /* keep static catalog */
-			}
+			if (!configs.length) return; /* keep static catalog */
 			discovered.set(cacheKey(endpoint), configs);
 			const providerId = endpointPiProviderId(endpoint);
 			try {

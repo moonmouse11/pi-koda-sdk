@@ -12,6 +12,7 @@ export async function resolveEndpointModels(
 	if (!discovered.length) {
 		discovered = loadCachedModelsForProvider(endpoint.providerId);
 	}
+	if (!discovered.length) return [];
 	return modelsForEndpoint(endpoint, discovered, overrides);
 }
 

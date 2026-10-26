@@ -1,6 +1,7 @@
 import fs from "node:fs";
 
 import type { DiscoveredModel } from "./sdk/discover.js";
+import { pickBool, pickInt } from "./koda-model-meta.js";
 import { findKodaModelsCachePath } from "./koda-paths.js";
 
 interface CacheEnvelope {
@@ -17,10 +18,6 @@ interface CacheProvider {
 type CacheModelRaw = Record<string, unknown>;
 
 let cachedEnvelope: CacheEnvelope | null | undefined;
-
-export function findModelsCacheFile(): string | undefined {
-	return findKodaModelsCachePath();
-}
 
 export function loadCachedModelsForProvider(providerId: string): DiscoveredModel[] {
 	const provider = loadCacheEnvelope()?.providers?.[providerId];
@@ -67,22 +64,6 @@ function pickString(raw: CacheModelRaw, keys: string[]): string | undefined {
 	for (const key of keys) {
 		const value = raw[key];
 		if (typeof value === "string" && value.trim()) return value.trim();
-	}
-	return undefined;
-}
-
-function pickInt(raw: CacheModelRaw, keys: string[]): number | undefined {
-	for (const key of keys) {
-		const value = raw[key];
-		if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.floor(value);
-	}
-	return undefined;
-}
-
-function pickBool(raw: CacheModelRaw, keys: string[]): boolean | undefined {
-	for (const key of keys) {
-		const value = raw[key];
-		if (typeof value === "boolean") return value;
 	}
 	return undefined;
 }
