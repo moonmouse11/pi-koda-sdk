@@ -89,8 +89,7 @@ export default function kodaSdkExtension(pi: ExtensionAPI): void {
 					break;
 			}
 
-			usage(
-				ctx,
+			ctx.ui.notify(
 				[
 					"Usage:",
 					"  /koda doctor",
@@ -102,11 +101,8 @@ export default function kodaSdkExtension(pi: ExtensionAPI): void {
 					"",
 					"Models: koda/<model> or koda-<provider>/<model> from env, koda-sdk.json, or Koda config.yaml",
 				].join("\n"),
+				"info",
 			);
 		},
 	});
-}
-
-function usage(ctx: ExtensionCommandContext, message: string): void {
-	ctx.ui.notify(message, "info");
 }

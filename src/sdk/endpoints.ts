@@ -83,7 +83,7 @@ export function collectSdkEndpointSources(): { endpoints: SdkEndpoint[]; lines: 
 	}
 
 	for (const row of readKodaOpenAiEndpoints()) {
-		const providerId = row.providerId === "koda" ? "koda" : row.providerId;
+		const { providerId } = row;
 		raw.push({
 			providerId,
 			baseUrl: row.baseUrl,
@@ -116,19 +116,10 @@ function dedupeWithTrace(raw: SdkEndpointCandidate[]): { endpoints: SdkEndpoint[
 			continue;
 		}
 		seen.add(key);
-		endpoints.push(stripCandidateIndex(item));
+		const { _index, ...endpoint } = item;
+		endpoints.push(endpoint);
 	}
 	return { endpoints, dropped };
-}
-
-function stripCandidateIndex(item: SdkEndpointCandidate): SdkEndpoint {
-	return {
-		providerId: item.providerId,
-		baseUrl: item.baseUrl,
-		apiKey: item.apiKey,
-		modelIds: item.modelIds,
-		source: item.source,
-	};
 }
 
 export function resolveEndpointApiKey(endpoint: SdkEndpoint): string | undefined {
