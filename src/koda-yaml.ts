@@ -11,6 +11,11 @@ export interface KodaOpenAiEndpoint {
 	modelIds: string[];
 }
 
+/** Koda's own providers (`koda`, `koda-chat-models`, …) may share Koda's key; others never get it. */
+export function isKodaProviderId(providerId: string): boolean {
+	return providerId.startsWith("koda");
+}
+
 export function readKodaOpenAiEndpoints(): KodaOpenAiEndpoint[] {
 	const record = readKodaConfigDocument();
 	if (!record) return [];
@@ -24,7 +29,7 @@ export function readKodaOpenAiEndpoints(): KodaOpenAiEndpoint[] {
 		const id = typeof provider.id === "string" ? provider.id : undefined;
 		const baseUrl = firstString(provider.base_url, provider.baseUrl);
 		if (!id || !baseUrl) continue;
-		const key = auth.get(id) ?? auth.get("koda") ?? auth.get("koda-chat-models");
+		const key = auth.get(id) ?? (isKodaProviderId(id) ? (auth.get("koda") ?? auth.get("koda-chat-models")) : undefined);
 		endpoints.push({
 			providerId: id,
 			baseUrl: baseUrl.replace(/\/$/, ""),

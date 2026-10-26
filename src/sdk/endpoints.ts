@@ -1,6 +1,6 @@
 import { loadSdkConfig } from "../config.js";
 import { lookupModelOverride, readModelOverrideIndex, type KodaModelOverride } from "../koda-model-meta.js";
-import { readKodaOpenAiEndpoints } from "../koda-yaml.js";
+import { isKodaProviderId, readKodaOpenAiEndpoints } from "../koda-yaml.js";
 import type { DiscoveredModel } from "./discover.js";
 
 export interface SdkEndpoint {
@@ -87,7 +87,7 @@ export function collectSdkEndpointSources(): { endpoints: SdkEndpoint[]; lines: 
 		raw.push({
 			providerId,
 			baseUrl: row.baseUrl,
-			apiKey: row.apiKey ?? envKey,
+			apiKey: row.apiKey ?? (isKodaProviderId(providerId) ? envKey : undefined),
 			modelIds: row.modelIds,
 			source: "koda-yaml",
 			_index: index++,
@@ -133,6 +133,7 @@ function stripCandidateIndex(item: SdkEndpointCandidate): SdkEndpoint {
 
 export function resolveEndpointApiKey(endpoint: SdkEndpoint): string | undefined {
 	if (endpoint.apiKey?.trim()) return endpoint.apiKey.trim();
+	if (!isKodaProviderId(endpoint.providerId)) return undefined;
 	const env = process.env.KODA_API_KEY?.trim();
 	return env || undefined;
 }
