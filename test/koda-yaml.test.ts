@@ -34,4 +34,32 @@ openrouter:
 			assert.deepEqual(endpoints[0]?.modelIds, ["openai/gpt-5"]);
 		});
 	});
+
+	it("keeps models rows of other providers out of an endpoint", () => {
+		withTempHome(({ root }) => {
+			writeKodaConfig(
+				root,
+				`
+version: 1
+providers:
+  - id: a
+    base_url: https://a.example/v1
+  - id: b
+    base_url: https://b.example/v1
+models:
+  - name: m-a
+    provider: a
+    model: model-a
+  - name: m-b
+    provider: b
+    model: model-b
+  - name: shared
+    model: model-any
+`,
+			);
+			const [a, b] = readKodaOpenAiEndpoints();
+			assert.deepEqual(a?.modelIds, ["model-a", "model-any"]);
+			assert.deepEqual(b?.modelIds, ["model-b", "model-any"]);
+		});
+	});
 });

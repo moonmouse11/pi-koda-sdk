@@ -61,27 +61,27 @@ export function registerKodaSdkProviders(pi: ExtensionAPI): KodaSdkRegistry {
 	registerStaticCatalog();
 
 	async function refreshDiscovery(signal?: AbortSignal): Promise<number> {
+		const current = endpoints;
+		const resolved = await Promise.all(
+			current.map((endpoint) => resolveEndpointModels(endpoint, signal).catch(() => [])),
+		);
 		let total = 0;
-		for (const endpoint of endpoints) {
-			try {
-				const configs = await resolveEndpointModels(endpoint, signal);
-				if (!configs.length || (configs.length === 1 && configs[0]?.id === "default" && !endpoint.modelIds.length)) {
-					continue;
-				}
-				discovered.set(cacheKey(endpoint), configs);
-				const providerId = endpointPiProviderId(endpoint);
-				try {
-					pi.unregisterProvider(providerId);
-					registeredProviderIds.delete(providerId);
-				} catch {
-					/* first registration */
-				}
-				registerOne(endpoint, configs);
-				total += configs.length;
-			} catch {
-				/* keep static catalog */
+		current.forEach((endpoint, index) => {
+			const configs = resolved[index] ?? [];
+			if (!configs.length || (configs.length === 1 && configs[0]?.id === "default" && !endpoint.modelIds.length)) {
+				return; /* keep static catalog */
 			}
-		}
+			discovered.set(cacheKey(endpoint), configs);
+			const providerId = endpointPiProviderId(endpoint);
+			try {
+				pi.unregisterProvider(providerId);
+				registeredProviderIds.delete(providerId);
+			} catch {
+				/* first registration */
+			}
+			registerOne(endpoint, configs);
+			total += configs.length;
+		});
 		return total;
 	}
 
