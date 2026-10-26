@@ -2,7 +2,7 @@ import fs from "node:fs";
 import { parse as parseYaml } from "yaml";
 
 import { readKodaConfigDocument } from "./koda-config-doc.js";
-import { findKodaAuthPath, findKodaConfigPath } from "./koda-paths.js";
+import { findKodaAuthPath } from "./koda-paths.js";
 
 export interface KodaOpenAiEndpoint {
 	providerId: string;
@@ -22,7 +22,7 @@ export function readKodaOpenAiEndpoints(): KodaOpenAiEndpoint[] {
 		if (!item || typeof item !== "object") continue;
 		const provider = item as Record<string, unknown>;
 		const id = typeof provider.id === "string" ? provider.id : undefined;
-		const baseUrl = typeof provider.base_url === "string" ? provider.base_url : typeof provider.baseUrl === "string" ? provider.baseUrl : undefined;
+		const baseUrl = firstString(provider.base_url, provider.baseUrl);
 		if (!id || !baseUrl) continue;
 		const key = auth.get(id) ?? auth.get("koda") ?? auth.get("koda-chat-models");
 		endpoints.push({
@@ -49,7 +49,7 @@ function readAuthMap(): Map<string, string> {
 	for (const [providerId, value] of Object.entries(doc as Record<string, unknown>)) {
 		if (!value || typeof value !== "object") continue;
 		const entry = value as Record<string, unknown>;
-		const access = typeof entry.access === "string" ? entry.access.trim() : typeof entry.key === "string" ? entry.key.trim() : "";
+		const access = firstString(entry.access, entry.key)?.trim();
 		if (access) map.set(providerId, access);
 	}
 	return map;
@@ -63,18 +63,19 @@ function collectModelRefs(config: Record<string, unknown>, providerId: string): 
 			addRef(ids, value, providerId);
 		}
 	}
-	const models = config.models;
-	if (Array.isArray(models)) {
-		for (const item of models) {
-			if (!item || typeof item !== "object") continue;
-			const row = item as Record<string, unknown>;
-			if (typeof row.model === "string") ids.add(row.model);
-			if (typeof row.name === "string" && row.provider === providerId && typeof row.model === "string") {
-				ids.add(row.model);
-			}
+	const models: unknown[] = Array.isArray(config.models) ? config.models : [];
+	for (const item of models) {
+		const row = (item ?? {}) as Record<string, unknown>;
+		// rows without a provider apply to every endpoint
+		if (typeof row.model === "string" && (row.provider === undefined || row.provider === providerId)) {
+			ids.add(row.model);
 		}
 	}
 	return [...ids];
+}
+
+function firstString(...values: unknown[]): string | undefined {
+	return values.find((value): value is string => typeof value === "string");
 }
 
 function addRef(ids: Set<string>, value: unknown, providerId: string): void {

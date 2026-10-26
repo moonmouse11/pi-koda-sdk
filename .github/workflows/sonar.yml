@@ -36,7 +36,8 @@ jobs:
           cache: npm
 
       - name: Install dependencies
-        run: npm ci
+        # no lifecycle scripts from dependencies (Sonar githubactions:S6505)
+        run: npm ci --ignore-scripts
 
       - name: Run tests with coverage
         # lcov SF: paths are relative to the repo root, so Sonar resolves them as is.

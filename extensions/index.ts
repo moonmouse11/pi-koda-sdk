@@ -13,71 +13,80 @@ export default function kodaSdkExtension(pi: ExtensionAPI): void {
 	const registry = registerKodaSdkProviders(pi);
 	registry.scheduleStartupDiscovery();
 
+	async function doctor(ctx: ExtensionCommandContext, verbose: boolean): Promise<void> {
+		const sdk = loadSdkConfig();
+		const lines = [
+			`pi-koda-sdk ${PACKAGE_VERSION} (SDK / OpenAI-compatible)`,
+			`endpoints: ${registry.endpoints.length}`,
+			...(await buildDoctorReport(registry.endpoints, {
+				verbose,
+				signal: verbose ? AbortSignal.timeout(15_000) : undefined,
+			})),
+			`~/.pi/agent/koda-sdk.json: ${sdk.baseUrl ?? "(no baseUrl override)"}`,
+			`KODA_BASE_URL: ${process.env.KODA_BASE_URL ?? "(unset)"}`,
+			`koda config.yaml: ${findKodaConfigPath() ?? "not found"}`,
+			`koda auth.yaml: ${findKodaAuthPath() ?? "not found"}`,
+			`models-cache.json: ${findKodaModelsCachePath() ?? "not found"}`,
+			`model_overrides: ${readModelOverrideIndex().size}`,
+		];
+		lines.push(...formatRoutingHints());
+		ctx.ui.notify(lines.join("\n"), registry.endpoints.length ? "info" : "warning");
+	}
+
+	function sources(ctx: ExtensionCommandContext): void {
+		const { lines: sourceLines } = collectSdkEndpointSources();
+		ctx.ui.notify(
+			["Koda SDK endpoint sources (merge order):", ...sourceLines, "", `Active endpoints: ${registry.endpoints.length}`].join(
+				"\n",
+			),
+			"info",
+		);
+	}
+
+	async function reload(ctx: ExtensionCommandContext): Promise<void> {
+		ctx.ui.notify("Reloading Koda SDK providers…", "info");
+		const count = await registry.reload(AbortSignal.timeout(15_000));
+		ctx.ui.notify(
+			count
+				? `Reloaded ${registry.endpoints.length} endpoint(s), ${count} model(s) from API. Open /model.`
+				: `Reloaded ${registry.endpoints.length} endpoint(s). No models from API (check keys and URLs).`,
+			registry.endpoints.length ? "info" : "warning",
+		);
+	}
+
+	async function refreshModels(ctx: ExtensionCommandContext): Promise<void> {
+		ctx.ui.notify("Refreshing Koda SDK model catalogs…", "info");
+		const count = await registry.refreshDiscovery(AbortSignal.timeout(15_000));
+		ctx.ui.notify(
+			count ? `Refreshed ${count} model(s). Open /model.` : "No models discovered (check KODA_API_KEY and base URL).",
+			count ? "info" : "warning",
+		);
+	}
+
 	pi.registerCommand("koda", {
 		description: "Koda SDK: doctor, reload, and model catalog refresh",
 		handler: async (args, ctx) => {
-			const parts = args.trim().split(/\s+/u);
-			const sub = parts[0]?.toLowerCase();
+			const [sub = "", ...rest] = args.trim().split(/\s+/u);
 
-			if (sub === "doctor" || sub === "doctor-verbose") {
-				const verbose = sub === "doctor-verbose";
-				const sdk = loadSdkConfig();
-				const lines = [
-					`pi-koda-sdk ${PACKAGE_VERSION} (SDK / OpenAI-compatible)`,
-					`endpoints: ${registry.endpoints.length}`,
-					...(await buildDoctorReport(registry.endpoints, {
-						verbose,
-						signal: verbose ? AbortSignal.timeout(15_000) : undefined,
-					})),
-					`~/.pi/agent/koda-sdk.json: ${sdk.baseUrl ?? "(no baseUrl override)"}`,
-					`KODA_BASE_URL: ${process.env.KODA_BASE_URL ?? "(unset)"}`,
-					`koda config.yaml: ${findKodaConfigPath() ?? "not found"}`,
-					`koda auth.yaml: ${findKodaAuthPath() ?? "not found"}`,
-					`models-cache.json: ${findKodaModelsCachePath() ?? "not found"}`,
-					`model_overrides: ${readModelOverrideIndex().size}`,
-				];
-				lines.push(...formatRoutingHints());
-				ctx.ui.notify(lines.join("\n"), registry.endpoints.length ? "info" : "warning");
-				return;
-			}
-
-			if (sub === "sources") {
-				const { lines: sourceLines } = collectSdkEndpointSources();
-				ctx.ui.notify(
-					["Koda SDK endpoint sources (merge order):", ...sourceLines, "", `Active endpoints: ${registry.endpoints.length}`].join(
-						"\n",
-					),
-					"info",
-				);
-				return;
-			}
-
-			if (sub === "reload") {
-				ctx.ui.notify("Reloading Koda SDK providers…", "info");
-				const count = await registry.reload(AbortSignal.timeout(15_000));
-				ctx.ui.notify(
-					count
-						? `Reloaded ${registry.endpoints.length} endpoint(s), ${count} model(s) from API. Open /model.`
-						: `Reloaded ${registry.endpoints.length} endpoint(s). No models from API (check keys and URLs).`,
-					registry.endpoints.length ? "info" : "warning",
-				);
-				return;
-			}
-
-			if (sub === "models" && parts[1] === "refresh") {
-				ctx.ui.notify("Refreshing Koda SDK model catalogs…", "info");
-				const count = await registry.refreshDiscovery(AbortSignal.timeout(15_000));
-				ctx.ui.notify(
-					count ? `Refreshed ${count} model(s). Open /model.` : "No models discovered (check KODA_API_KEY and base URL).",
-					count ? "info" : "warning",
-				);
-				return;
-			}
-
-			if (sub === "base-url" && parts[1]) {
-				saveSdkConfig({ baseUrl: parts.slice(1).join(" ") });
-				ctx.ui.notify("Saved base URL to ~/.pi/agent/koda-sdk.json. Run /koda reload.", "info");
-				return;
+			switch (sub.toLowerCase()) {
+				case "doctor":
+					return doctor(ctx, false);
+				case "doctor-verbose":
+					return doctor(ctx, true);
+				case "sources":
+					return sources(ctx);
+				case "reload":
+					return reload(ctx);
+				case "models":
+					if (rest[0] === "refresh") return refreshModels(ctx);
+					break;
+				case "base-url":
+					if (rest.length) {
+						saveSdkConfig({ baseUrl: rest.join(" ") });
+						ctx.ui.notify("Saved base URL to ~/.pi/agent/koda-sdk.json. Run /koda reload.", "info");
+						return;
+					}
+					break;
 			}
 
 			usage(
