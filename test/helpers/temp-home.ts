@@ -7,7 +7,7 @@ export interface TempHome {
 	restore: () => void;
 }
 
-export function withTempHome(fn: (home: TempHome) => void): void {
+export function withTempHome<T>(fn: (home: TempHome) => T): T {
 	const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-koda-sdk-"));
 	const prevHome = process.env.HOME;
 	const prevXdg = process.env.XDG_DATA_HOME;
@@ -22,11 +22,16 @@ export function withTempHome(fn: (home: TempHome) => void): void {
 			fs.rmSync(root, { recursive: true, force: true });
 		},
 	};
+	let result: T;
 	try {
-		fn(temp);
-	} finally {
+		result = fn(temp);
+	} catch (err) {
 		temp.restore();
+		throw err;
 	}
+	if (result instanceof Promise) return result.finally(temp.restore) as T;
+	temp.restore();
+	return result;
 }
 
 export function writeKodaConfig(homeRoot: string, yaml: string): void {
