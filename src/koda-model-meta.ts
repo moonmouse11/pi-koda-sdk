@@ -50,7 +50,7 @@ function normalizeRefKey(ref: string): string {
 	return ref.trim().toLowerCase();
 }
 
-function pickInt(row: Record<string, unknown>, keys: string[]): number | undefined {
+export function pickInt(row: Record<string, unknown>, keys: string[]): number | undefined {
 	for (const key of keys) {
 		const value = row[key];
 		if (typeof value === "number" && Number.isFinite(value) && value > 0) return Math.floor(value);
@@ -58,7 +58,7 @@ function pickInt(row: Record<string, unknown>, keys: string[]): number | undefin
 	return undefined;
 }
 
-function pickBool(row: Record<string, unknown>, keys: string[]): boolean | undefined {
+export function pickBool(row: Record<string, unknown>, keys: string[]): boolean | undefined {
 	for (const key of keys) {
 		const value = row[key];
 		if (typeof value === "boolean") return value;

@@ -54,8 +54,3 @@ export function formatRoutingHints(): string[] {
 	}
 	return lines;
 }
-
-/** @deprecated use formatRoutingHints */
-export function formatPrimaryModelHint(): string | undefined {
-	return formatRoutingHints()[0];
-}
