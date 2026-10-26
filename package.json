@@ -46,7 +46,7 @@
     "@earendil-works/pi-coding-agent": "*"
   },
   "dependencies": {
-    "yaml": "2.8.1"
+    "yaml": "2.8.3"
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "0.99.2",
