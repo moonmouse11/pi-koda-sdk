@@ -34,10 +34,6 @@ export async function buildDoctorReport(
 	endpoints: SdkEndpoint[],
 	options: { verbose: boolean; signal?: AbortSignal },
 ): Promise<string[]> {
-	const lines: string[] = [];
-	for (const endpoint of endpoints) {
-		const { summary, verbose } = await describeEndpointHealth(endpoint, options);
-		lines.push(summary, ...verbose);
-	}
-	return lines;
+	const health = await Promise.all(endpoints.map((endpoint) => describeEndpointHealth(endpoint, options)));
+	return health.flatMap(({ summary, verbose }) => [summary, ...verbose]);
 }
